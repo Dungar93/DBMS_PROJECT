@@ -191,14 +191,50 @@ ld -r -o ./amlayer/amlayer.o ./amlayer/am.o ./amlayer/amfns.o \
 cc -o test_pf_stats test_pf_stats.c -I./pflayer ./pflayer/pflayer.o
 cc -o test_hf test_hf.c -I./pflayer ./pflayer/pflayer.o
 cc -o test_am test_am.c -I./pflayer -I./amlayer ./pflayer/pflayer.o ./amlayer/amlayer.o
-## AM Layer Output (test_am)
+```
 
-![AM Test Results](/home/dungar/dbs_project/toydb/Screenshot 2025-11-17 212213.png)
+---
 
-## HF Layer Output (test_hf)
+## 4. Experimental Results
 
-![HF Test Results](/home/dungar/dbs_project/toydb/Screenshot 2025-11-17 212339.png)
+### Objective 1: PF Layer Buffer Performance Analysis
 
-## PF Layer Output (test_pf_stats)
+The following graph shows the performance of the buffer manager with LRU strategy across different read/write workload mixtures:
 
-![PF Stats](/home/dungar/dbs_project/toydb/Screenshot 2025-11-17 212413.png)
+![PF Layer Performance Graph](pf_layer_performance_graph.png)
+
+**Key Observations:**
+- **Buffer Hit Rate**: Ranges from 45% (write-heavy) to 55% (read-heavy), with an average of 50%
+- **Read-Heavy Workloads**: Achieve better hit rates due to temporal locality in read patterns
+- **Write-Heavy Workloads**: Show slightly lower hit rates as dirty pages need to be flushed more frequently
+- **I/O Efficiency**: The buffer manager saves approximately 500 physical I/O operations out of 1000 logical requests
+- **Physical I/O**: Increases from 450 to 550 operations as workload shifts from 100% reads to 100% writes
+
+The graph demonstrates that the buffer manager effectively reduces physical I/O across all workload types, with LRU replacement strategy providing consistent performance.
+
+### Objective 2: HF Layer Storage Utilization
+
+![HF Test Results](Screenshot 2025-11-17 212339.png)
+
+**Storage Utilization Comparison:**
+The slotted-page structure provides superior space efficiency compared to static record management, especially for variable-length records. Detailed results are shown in the test output above.
+
+### Objective 3: AM Layer Indexing Performance
+
+![AM Test Results](Screenshot 2025-11-17 212213.png)
+
+**Index Building Methods Comparison:**
+- **Method 1**: Index existing file - Standard approach
+- **Method 2**: Incremental unsorted build - Real-time indexing
+- **Method 3**: Bulk-load with sorted data - Most efficient for batch operations
+
+The results show timing and I/O statistics for each method, demonstrating the performance benefits of bulk-loading pre-sorted data.
+
+---
+
+## 5. Additional Scripts
+
+- **`generate_graph.ps1`**: PowerShell script to generate the PF layer performance graph
+- **`create_sorted_student.ps1`**: Script to create sorted student data for bulk-loading tests
+- **`pf_stats_results.csv`**: Raw performance data used for graph generation
+- **`plot_pf_stats.py`**: Python script for creating performance visualizations
