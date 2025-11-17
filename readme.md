@@ -194,10 +194,12 @@ cc -o test_am test_am.c -I./pflayer -I./amlayer ./pflayer/pflayer.o ./amlayer/am
 ```
 
 ---
+![AM Test Results](/home/dungar/dbs_project/toydb/images/Screenshot 2025-11-17 212413.png)
 
 ## 4. Experimental Results
 
 ### Objective 1: PF Layer Buffer Performance Analysis
+![HF Test Results](/home/dungar/dbs_project/toydb/images/Screenshot 2025-11-17 212339.png)
 
 The following graph shows the performance of the buffer manager with LRU strategy across different read/write workload mixtures:
 
@@ -238,3 +240,4 @@ The results show timing and I/O statistics for each method, demonstrating the pe
 - **`create_sorted_student.ps1`**: Script to create sorted student data for bulk-loading tests
 - **`pf_stats_results.csv`**: Raw performance data used for graph generation
 - **`plot_pf_stats.py`**: Python script for creating performance visualizations
+![PF Stats](/home/dungar/dbs_project/toydb/images/Screenshot 2025-11-17 212213.png)
