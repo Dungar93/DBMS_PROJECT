@@ -203,7 +203,7 @@ cc -o test_am test_am.c -I./pflayer -I./amlayer ./pflayer/pflayer.o ./amlayer/am
 
 The following graph shows the performance of the buffer manager with LRU strategy across different read/write workload mixtures:
 
-![PF Layer Performance Graph](pf_layer_performance_graph.png)
+![PF Layer Performance Graph](/images/pf_layer_performance_graph.png)
 
 **Key Observations:**
 - **Buffer Hit Rate**: Ranges from 45% (write-heavy) to 55% (read-heavy), with an average of 50%
@@ -216,14 +216,14 @@ The graph demonstrates that the buffer manager effectively reduces physical I/O 
 
 ### Objective 2: HF Layer Storage Utilization
 
-![HF Test Results](Screenshot 2025-11-17 212339.png)
+![HF Test Results](/images/Screenshot 2025-11-17 212339.png)
 
 **Storage Utilization Comparison:**
 The slotted-page structure provides superior space efficiency compared to static record management, especially for variable-length records. Detailed results are shown in the test output above.
 
 ### Objective 3: AM Layer Indexing Performance
 
-![AM Test Results](Screenshot 2025-11-17 212213.png)
+![AM Test Results](/images/Screenshot 2025-11-17 212213.png)
 
 **Index Building Methods Comparison:**
 - **Method 1**: Index existing file - Standard approach
@@ -240,4 +240,4 @@ The results show timing and I/O statistics for each method, demonstrating the pe
 - **`create_sorted_student.ps1`**: Script to create sorted student data for bulk-loading tests
 - **`pf_stats_results.csv`**: Raw performance data used for graph generation
 - **`plot_pf_stats.py`**: Python script for creating performance visualizations
-![PF Stats](/home/dungar/dbs_project/toydb/images/Screenshot 2025-11-17 212213.png)
+![PF Stats](/images/Screenshot 2025-11-17 212213.png)
