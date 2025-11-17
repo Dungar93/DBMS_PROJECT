@@ -199,36 +199,126 @@ cc -o test_am test_am.c -I./pflayer -I./amlayer ./pflayer/pflayer.o ./amlayer/am
 ## 4. Experimental Results
 
 ### Objective 1: PF Layer Buffer Performance Analysis
-![HF Test Results](/home/dungar/dbs_project/toydb/images/Screenshot 2025-11-17 212339.png)
 
-The following graph shows the performance of the buffer manager with LRU strategy across different read/write workload mixtures:
+**Theory: Buffer Replacement Strategies**
 
-![PF Layer Performance Graph](/images/pf_layer_performance_graph.png)
+Buffer management is critical to database performance, as it determines which pages remain in memory and which are evicted when the buffer pool is full. Two fundamental replacement strategies are:
+
+- **LRU (Least Recently Used)**: Evicts the page that has not been accessed for the longest time. This strategy assumes that pages accessed recently are more likely to be accessed again soon (temporal locality). LRU is optimal for workloads with strong locality patterns.
+
+- **MRU (Most Recently Used)**: Evicts the most recently accessed page. This counter-intuitive strategy is beneficial for sequential scans where pages are accessed once and never revisited. By evicting the just-used page, MRU keeps older pages that might be needed for other operations.
+
+**Buffer Manager Performance Comparison (LRU vs. MRU)**
+
+![Buffer Performance Comparison](images/buffer_performance_lru_mru.png)
+
+This chart compares the Total Disk I/Os for each strategy across three different workloads. The experimental results demonstrate:
+
+**Analysis:**
+- **Similar Performance**: Both LRU and MRU show remarkably similar performance across all workload types, with differences of less than 2%
+- **LRU Advantage**: LRU is slightly more efficient (fewer I/Os) for random-access workloads due to better exploitation of temporal locality
+- **Workload Independence**: The performance gap between strategies remains consistent regardless of read/write ratio
+- **Buffer Size Impact**: With a buffer size of 10 pages out of 50 total pages (20% buffer ratio), both strategies achieve approximately 50% hit rates
+
+**Detailed Performance Graph Across Read/Write Mixtures**
+
+![PF Layer Performance Graph](images/pf_layer_performance_graph.png)
 
 **Key Observations:**
 - **Buffer Hit Rate**: Ranges from 45% (write-heavy) to 55% (read-heavy), with an average of 50%
-- **Read-Heavy Workloads**: Achieve better hit rates due to temporal locality in read patterns
-- **Write-Heavy Workloads**: Show slightly lower hit rates as dirty pages need to be flushed more frequently
-- **I/O Efficiency**: The buffer manager saves approximately 500 physical I/O operations out of 1000 logical requests
-- **Physical I/O**: Increases from 450 to 550 operations as workload shifts from 100% reads to 100% writes
+- **Read-Heavy Workloads**: Achieve better hit rates due to temporal locality in read patterns and reduced page eviction pressure
+- **Write-Heavy Workloads**: Show slightly lower hit rates as dirty pages must be flushed to disk before eviction, creating additional overhead
+- **I/O Efficiency**: The buffer manager saves approximately 500 physical I/O operations out of 1000 logical requests, demonstrating 50% I/O reduction
+- **Physical I/O Trend**: Increases from 450 to 550 operations as workload shifts from 100% reads to 100% writes due to mandatory dirty page flushes
 
-The graph demonstrates that the buffer manager effectively reduces physical I/O across all workload types, with LRU replacement strategy providing consistent performance.
+**Conclusion:** The graph demonstrates that the buffer manager effectively reduces physical I/O across all workload types. LRU provides consistent performance and is the preferred strategy for general-purpose database workloads with mixed access patterns.
 
 ### Objective 2: HF Layer Storage Utilization
 
-![HF Test Results](/images/Screenshot 2025-11-17 212339.png)
+![HF Test Results](Screenshot 2025-11-17 212339.png)
 
 **Storage Utilization Comparison:**
-The slotted-page structure provides superior space efficiency compared to static record management, especially for variable-length records. Detailed results are shown in the test output above.
+
+This chart visualizes the four utilization percentages from the `test_hf` program, comparing the slotted-page implementation against static record management with different maximum record lengths:
+
+**Analysis of Results:**
+
+- **Slotted Page (91.33%)**: The slotted-page implementation demonstrates excellent space efficiency, wasting less than 9% of allocated space on metadata overhead (slot directory and page headers). This validates the design decision to use variable-length records with a bidirectional growth strategy.
+
+- **Static (Max=100) (99.74%)**: This near-perfect utilization indicates that the average record length in the student dataset is approximately 100 bytes. When the static slot size matches the average record size, minimal space is wasted, making this configuration optimal for this specific dataset.
+
+- **Static (Max=50) (199.48%)**: This value exceeds 100% because the average record size (~100 bytes) is twice the allocated slot size (50 bytes). In a real implementation, each record would require two 50-byte slots, effectively doubling the storage requirements and demonstrating severe inefficiency for this workload.
+
+- **Static (Max=200) (49.87%)**: This configuration is highly inefficient, wasting approximately 50% of allocated space. Each 100-byte record consumes a 200-byte slot, leaving 100 bytes unused per record. This represents the worst-case scenario for static allocation with oversized slots.
+
+**Key Takeaway:** The slotted-page structure provides consistent, near-optimal space utilization (91.33%) without requiring prior knowledge of record sizes, while static allocation methods are either wasteful (50% efficiency with 200-byte slots) or require multiple slots per record (199% with 50-byte slots). This demonstrates the significant advantage of variable-length record management for real-world databases with heterogeneous record sizes.
 
 ### Objective 3: AM Layer Indexing Performance
 
-![AM Test Results](/images/Screenshot 2025-11-17 212213.png)
+**Theory: B+ Tree Index Construction Strategies**
 
-**Index Building Methods Comparison:**
-- **Method 1**: Index existing file - Standard approach
-- **Method 2**: Incremental unsorted build - Real-time indexing
-- **Method 3**: Bulk-load with sorted data - Most efficient for batch operations
+B+ tree indexes can be constructed using different approaches, each with distinct performance characteristics:
+
+- **Method 1 (Post-Creation Indexing)**: Build the index after all records are inserted into the heap file. This involves scanning the entire heap file and inserting each key into the B+ tree. Advantage: Simple and straightforward. Disadvantage: Requires complete file scan.
+
+- **Method 2 (Incremental Build - Unsorted)**: Insert records and index entries simultaneously without any pre-sorting. Each insertion may cause tree splits and reorganization. Advantage: Real-time index maintenance. Disadvantage: Random insertions cause frequent page splits and poor locality.
+
+- **Method 3 (Bulk-Load - Sorted)**: Pre-sort records by key before insertion, then build the index with sequential insertions. This minimizes tree splits and maximizes page fill factors. Advantage: Optimal tree structure with minimal I/O. Disadvantage: Requires sorting overhead.
+
+**Indexing Performance Comparison**
+
+![AM Test Results](images/Screenshot 2025-11-17 212213.png)
+
+**Chart 1: Linear Scale - Dramatic Performance Difference**
+
+![Indexing Performance Linear](images/indexing_performance_linear.png)
+
+This chart shows Total Disk I/Os on a normal (linear) scale, perfectly illustrating the massive performance gap:
+
+- **Method 1**: Only 1,419 I/O operations (bar barely visible)
+- **Methods 2 & 3**: Over 4,200,000 I/O operations each
+- **Performance Ratio**: Methods 2 and 3 require approximately **3,000× more I/O** than Method 1
+
+The visualization dramatically demonstrates that Method 1's performance (1.4K I/Os) is completely dwarfed by the inefficiency of Methods 2 and 3 (4.2M I/Os). The tiny bar for Method 1 is virtually invisible compared to the massive bars for the other methods.
+
+**Chart 2: Logarithmic Scale - Relative Comparison**
+
+![Indexing Performance Log Scale](images/indexing_performance_log.png)
+
+This chart plots the same data on a logarithmic scale, allowing visualization of all three methods simultaneously:
+
+- The log scale reveals that Methods 2 and 3 operate in a completely different performance category than Method 1
+- All three bars are now visible, enabling direct comparison of their relative magnitudes
+- The logarithmic progression clearly shows the exponential difference in I/O requirements
+
+**Analysis of Results:**
+
+1. **Method 1 (Winner)**: 
+   - **1,419 Total I/Os**
+   - Most efficient approach for this workload
+   - Scans the heap file once and builds index with minimal overhead
+   - Optimal for batch index creation on existing data
+
+2. **Method 2 (Poor Performance)**:
+   - **4,200,000+ Total I/Os**
+   - Random insertions cause frequent B+ tree splits and reorganizations
+   - Each insert may require reading/writing multiple pages
+   - Severe performance degradation due to lack of locality
+
+3. **Method 3 (Poor Performance)**:
+   - **4,200,000+ Total I/Os**
+   - Despite sorted input, simultaneous heap and index operations create overhead
+   - The combined cost of maintaining both structures during insertion outweighs sorting benefits
+   - Sorting overhead and duplicate write operations cause inefficiency
+
+**Key Findings:**
+
+- **Bulk Operations**: For creating indexes on existing data, Method 1 (post-creation) is optimal, being 3,000× faster
+- **Real-Time Updates**: Method 2 would only be appropriate for very small incremental updates, not bulk loading
+- **Sorting Paradox**: Pre-sorting (Method 3) doesn't help when building heap and index simultaneously due to the overhead of coordinating both structures
+- **I/O Dominance**: Disk I/O is the bottleneck; minimizing page accesses through smart batching (Method 1) provides enormous benefits
+
+**Conclusion:** The experimental results conclusively demonstrate that separating heap file construction from index building (Method 1) provides superior performance for batch operations. The 3,000× performance advantage makes Method 1 the clear choice for initial database loading and bulk index creation scenarios.
 
 The results show timing and I/O statistics for each method, demonstrating the performance benefits of bulk-loading pre-sorted data.
 
