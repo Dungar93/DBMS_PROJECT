@@ -193,12 +193,12 @@ cc -o test_hf test_hf.c -I./pflayer ./pflayer/pflayer.o
 cc -o test_am test_am.c -I./pflayer -I./amlayer ./pflayer/pflayer.o ./amlayer/amlayer.o
 ## AM Layer Output (test_am)
 
-![AM Test Results](/home/dungar/dbs_project/toydb/Screenshot 2025-11-17 212213.png)
+![AM Test Results](/home/dungar/dbs_project/toydb/images/Screenshot 2025-11-17 212413.png)
 
 ## HF Layer Output (test_hf)
 
-![HF Test Results](/home/dungar/dbs_project/toydb/Screenshot 2025-11-17 212339.png)
+![HF Test Results](/home/dungar/dbs_project/toydb/images/Screenshot 2025-11-17 212339.png)
 
 ## PF Layer Output (test_pf_stats)
 
-![PF Stats](/home/dungar/dbs_project/toydb/Screenshot 2025-11-17 212413.png)
+![PF Stats](/home/dungar/dbs_project/toydb/images/Screenshot 2025-11-17 212213.png)
